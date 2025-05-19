@@ -27,3 +27,25 @@ dist-ssr
 *.hex
 *.elf
 *.bin
+*.eep
+*.lss
+*.map
+*.sym
+*.lst
+*.o
+*.d
+*.a
+
+# Arquivos do sistema
+Thumbs.db
+
+# Arquivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos de build
+build/
+dist/
+node_modules/

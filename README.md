@@ -1,50 +1,60 @@
-# Controle de Elevador com ESP32 e Vue.js
+# ESP32 Elevador Control
 
-Este projeto consiste em uma aplicação web para controle de um elevador usando ESP32 e Vue.js.
-
-## Componentes
-
-- Frontend: Vue.js
-- Backend: API REST
-- Hardware: ESP32
-- Protocolo: MQTT
-
-## Configuração do ESP32
-
-1. Conecte o ESP32 ao computador
-2. Configure as credenciais do WiFi no arquivo `esp32.ino`:
-   ```cpp
-   const char* ssid = "seu_wifi";
-   const char* password = "sua_senha";
-   ```
-3. Configure o IP do broker MQTT:
-   ```cpp
-   const char* mqtt_server = "ip_do_broker";
-   ```
-4. Faça upload do código para o ESP32
-
-## Configuração do Frontend
-
-1. Instale as dependências:
-   ```bash
-   npm install
-   ```
-
-2. Execute o servidor de desenvolvimento:
-   ```bash
-   npm run dev
-   ```
+Sistema de controle de elevador usando ESP32 com interface web para configuração e controle via MQTT.
 
 ## Funcionalidades
 
-- Botão "Subir": Liga o LED (porta 4) do ESP32
-- Botão "Descer": Desliga o LED (porta 4) do ESP32
+- Configuração inicial via Access Point (AP)
+- Interface web para configuração do WiFi
+- Controle via MQTT
+- Botão de reset para reconfiguração
+- Controle de relés para subida e descida do elevador
 
-## Estrutura do Projeto
+## Requisitos
 
-- `src/`: Código fonte do frontend Vue.js
-- `esp32.ino`: Código do ESP32
-- `public/`: Arquivos estáticos
+### Hardware
+- ESP32
+- 2 Relés
+- Botão BOOT/EN (para reset)
+
+### Bibliotecas Arduino
+- WiFi.h
+- PubSubClient.h
+- EEPROM.h
+- DNSServer.h
+- WebServer.h
+
+## Configuração
+
+1. Faça upload do código para o ESP32
+2. Conecte-se à rede WiFi "ESP32-Config" (senha: 12345678)
+3. Acesse 192.168.4.1 no navegador
+4. Configure o WiFi da sua rede
+5. O ESP32 reiniciará e se conectará à sua rede
+
+## Uso
+
+### Controle via MQTT
+- Tópico: `esp32/acionar`
+- Comandos:
+  - `ON`: Ativa os relés por 1 segundo
+  - `OFF`: Desativa os relés
+
+### Reset
+- Mantenha o botão BOOT pressionado por 5 segundos para reativar o modo AP
+
+## Configurações MQTT
+- Servidor: 10.100.0.21
+- Porta: 1883
+- Tópico: esp32/acionar
+
+## Pinagem
+- Relé 1: GPIO 4
+- Relé 2: GPIO 16
+- Botão Reset: GPIO 0 (BOOT/EN)
+
+## Licença
+Este projeto está sob a licença MIT.
 
 # Vue 3 + Vite
 

@@ -35,7 +35,7 @@ const enviar = async (valor) => {
     activeButton.value = valor === '1' ? 'top' : 'bottom'
     
     console.log('Enviando requisição com valor:', valor)
-    const response = await axios.post('http://10.100.0.21:8000/api/enviar-mensagem', 
+    const response = await axios.post('https://api.catenasystem.com.br/api/enviar-mensagem', 
       { deny: valor },
       {
         headers: {

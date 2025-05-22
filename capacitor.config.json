@@ -1,0 +1,19 @@
+{
+  "appId": "com.catenasystem.elevador",
+  "appName": "Elevador",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "BluetoothLe": {
+      "displayStrings": {
+        "scanning": "Escaneando...",
+        "cancel": "Cancelar",
+        "availableDevices": "Dispositivos disponíveis",
+        "noDeviceFound": "Nenhum dispositivo encontrado"
+      }
+    }
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

@@ -54,6 +54,9 @@ const unsigned long RESET_DELAY = 5000; // 5 segundos para reset
 // Variável para controlar o estado dos relés
 bool relesAtivos = false;
 
+// Pino do LED
+const int LED_PIN = 5; // Mude para outro pino
+
 // Função para salvar configurações na EEPROM
 void salvarConfig() {
   EEPROM.put(CONFIG_ADDRESS, config);
@@ -299,9 +302,11 @@ void setup_wifi() {
   Serial.print("SSID: ");
   Serial.println(config.ssid);
   
+  // LED piscando rápido durante tentativa de conexão
   int tentativas = 0;
   while (WiFi.status() != WL_CONNECTED && tentativas < 20) {
-    delay(500);
+    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+    delay(250);
     Serial.print(".");
     tentativas++;
   }
@@ -315,6 +320,9 @@ void setup_wifi() {
     Serial.println(WiFi.gatewayIP());
     Serial.print("Máscara de sub-rede: ");
     Serial.println(WiFi.subnetMask());
+    
+    // LED ligado continuamente quando conectado
+    digitalWrite(LED_PIN, HIGH);
     
     // Configurar e conectar ao MQTT
     client.setServer(mqtt_server, mqtt_port);
@@ -393,11 +401,45 @@ void reconnect() {
   }
 }
 
+// Função para testar o LED
+void testarLED() {
+  Serial.println("\nTestando LED...");
+  
+  // Teste direto do pino
+  Serial.println("Teste 1: Ligando LED por 2 segundos");
+  digitalWrite(LED_PIN, HIGH);
+  delay(2000);
+  digitalWrite(LED_PIN, LOW);
+  delay(1000);
+  
+  // Teste alternado
+  Serial.println("Teste 2: Piscando LED 5 vezes");
+  for(int i = 0; i < 5; i++) {
+    digitalWrite(LED_PIN, HIGH);
+    delay(200);
+    digitalWrite(LED_PIN, LOW);
+    delay(200);
+  }
+  
+  // Teste com pulso mais longo
+  Serial.println("Teste 3: Pulso longo");
+  digitalWrite(LED_PIN, HIGH);
+  delay(1000);
+  digitalWrite(LED_PIN, LOW);
+}
+
 void setup() {
   Serial.begin(115200);
   delay(2000); // Aguardar inicialização do Serial
   
   Serial.println("\n=== INICIANDO ESP32 ===");
+  
+  // Configurar pino do LED primeiro
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+  
+  // Testar LED imediatamente
+  testarLED();
   
   EEPROM.begin(512);
   carregarConfig();
@@ -446,6 +488,13 @@ void loop() {
   if (modoAP) {
     dnsServer.processNextRequest();
     server.handleClient();
+    
+    // LED piscando lentamente no modo AP
+    static unsigned long lastLedChange = 0;
+    if (millis() - lastLedChange > 1000) {
+      lastLedChange = millis();
+      digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+    }
   } else {
     if (!client.connected()) {
       reconnect();
@@ -458,6 +507,7 @@ void loop() {
       lastCheck = millis();
       if (WiFi.status() != WL_CONNECTED) {
         Serial.println("Conexão WiFi perdida. Reconectando...");
+        digitalWrite(LED_PIN, LOW); // LED apagado durante reconexão
         setup_wifi();
       }
     }

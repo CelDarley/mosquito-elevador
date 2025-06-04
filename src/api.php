@@ -1,30 +1,47 @@
 <?php
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/enviar-mensagem', function (Request $request) {
-    $mensagem = $request->input('deny');
-    if ($mensagem == "0") {
-        // Enviar mensagem para o ESP32
-        $command = "/usr/bin/mosquitto_pub -h 10.100.0.104 -p 1883 -t esp32/acionar -m 'ON'";
-        $output = shell_exec($command . " 2>&1");
-        \Log::info('Comando MQTT executado:', [
-            'comando' => $command,
-            'saida' => $output,
-            'usuario' => exec('whoami'),
-            'path' => exec('echo $PATH')
-        ]);
-    } elseif ($mensagem == "1") {
-        // Enviar mensagem para o ESP32
-        $command = "/usr/bin/mosquitto_pub -h 10.100.0.104 -p 1883 -t esp32/acionar -m 'OFF'";
-        $output = shell_exec($command . " 2>&1");
-        \Log::info('Comando MQTT executado:', [
-            'comando' => $command,
-            'saida' => $output,
-            'usuario' => exec('whoami'),
-            'path' => exec('echo $PATH')
-        ]);
+Route::post('enviar-mensagem', function (Request $request) {
+    try {
+        $mensagem = $request->input('deny');
+        if ($mensagem == "0") {
+            // Enviar mensagem para o ESP32 do elevador
+            $command = "/usr/bin/mosquitto_pub -h mosquitto.catenasystem.com.br -p 8883 -t esp32/acionar -m 'OFF'";
+            $output = shell_exec($command . " 2>&1");
+            error_log('Comando MQTT executado: ' . $command . ' - Saída: ' . $output);
+        } elseif ($mensagem == "1") {
+            // Enviar mensagem para o ESP32 do elevador
+            $command = "/usr/bin/mosquitto_pub -h mosquitto.catenasystem.com.br -p 8883 -t esp32/acionar -m 'ON'";
+            $output = shell_exec($command . " 2>&1");
+            error_log('Comando MQTT executado: ' . $command . ' - Saída: ' . $output);
+        }
+        return response()->json(['mensagem' => 'Mensagem enviada com sucesso!']);
+    } catch (\Exception $e) {
+        error_log('Erro ao executar comando MQTT: ' . $e->getMessage());
+        return response()->json(['erro' => 'Erro ao executar comando'], 500);
     }
-    return response()->json(['mensagem' => 'Mensagem enviada com sucesso!']);
 });
+
+Route::post('deskbee-fch001', function (Request $request) {
+    try {
+        $mensagem = $request->input('deny');
+        if ($mensagem == "0") {
+            // Enviar mensagem para o dispositivo deskbee-fch001
+            $command = "/usr/bin/mosquitto_pub -h mosquitto.catenasystem.com.br -p 8883 -t deskbee-fch001 -m 'OFF'";
+            $output = shell_exec($command . " 2>&1");
+            error_log('Comando MQTT executado: ' . $command . ' - Saída: ' . $output);
+        } elseif ($mensagem == "1") {
+            // Enviar mensagem para o dispositivo deskbee-fch001
+            $command = "/usr/bin/mosquitto_pub -h mosquitto.catenasystem.com.br -p 8883 -t deskbee-fch001 -m 'ON'";
+            $output = shell_exec($command . " 2>&1");
+            error_log('Comando MQTT executado: ' . $command . ' - Saída: ' . $output);
+        }
+        return response()->json(['mensagem' => 'Mensagem enviada com sucesso!']);
+    } catch (\Exception $e) {
+        error_log('Erro ao executar comando MQTT: ' . $e->getMessage());
+        return response()->json(['erro' => 'Erro ao executar comando'], 500);
+    }
+});
+
+

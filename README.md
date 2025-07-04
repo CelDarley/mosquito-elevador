@@ -48,7 +48,19 @@ Sistema de controle de elevador usando ESP32 com interface web para configuraç�
 - Porta: 1883
 - Tópico: esp32/acionar
 
+## API
+- A API que recebe a chamada e chama o servico do mosquitto está também na maquina:
+- Servidor: 10.100.0.21 
+- Rodando na porta 8001 
+~~~bash
+php artisan serve --host=10.100.0.21 --port 8001
+~~~ 
+- chamada: http://10.100.0.21:8001/api/enviar-mensagem
+- na pasta /root/mosquito-laravel
+
+
 ## Pinagem
+
 - Relé 1: GPIO 4
 - Relé 2: GPIO 16
 - Botão Reset: GPIO 0 (BOOT/EN)

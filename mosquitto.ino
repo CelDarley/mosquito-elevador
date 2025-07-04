@@ -21,7 +21,6 @@ const int mqtt_port = 8883;
 const char* mqtt_topic = "esp32/acionar";
 const int rl1 = 4;
 const int rl2 = 16;
-const int led = 18;
 
 // Configurações do Access Point
 const char* ap_ssid = "ESP32-Config";
@@ -37,16 +36,6 @@ DNSServer dnsServer;
 
 bool modoAP = false;
 
-// Declarações antecipadas das funções
-void setup_wifi();
-void callback(char* topic, byte* payload, unsigned int length);
-void reconnect();
-void salvarConfig();
-void carregarConfig();
-void iniciarAP();
-void handleRoot();
-void handleConfig();
-
 // Pino do botão de reset
 const int BUTTON_PIN = 0; // GPIO0 (botão BOOT/EN)
 unsigned long lastButtonPress = 0;
@@ -56,19 +45,36 @@ const unsigned long RESET_DELAY = 5000; // 5 segundos para reset
 bool relesAtivos = false;
 
 // Pino do LED
-const int LED_PIN = 5; // Mude para outro pino
+const int LED_PIN = 19;
 
 // Função para salvar configurações na EEPROM
 void salvarConfig() {
   EEPROM.put(CONFIG_ADDRESS, config);
   EEPROM.commit();
+  Serial.println("Configurações salvas na EEPROM");
 }
 
 // Função para carregar configurações da EEPROM
 void carregarConfig() {
   EEPROM.get(CONFIG_ADDRESS, config);
   if (!config.configurado) {
+    Serial.println("Nenhuma configuração encontrada na EEPROM");
     modoAP = true;
+  } else {
+    Serial.println("Configurações carregadas da EEPROM:");
+    Serial.print("SSID: ");
+    Serial.println(config.ssid);
+  }
+}
+
+// Função para testar o LED
+void testarLED() {
+  Serial.println("\nTestando LED...");
+  for(int i = 0; i < 3; i++) {
+    digitalWrite(LED_PIN, HIGH);
+    delay(500);
+    digitalWrite(LED_PIN, LOW);
+    delay(500);
   }
 }
 
@@ -272,22 +278,23 @@ void iniciarAP() {
   Serial.println(ap_password);
   Serial.print("IP do AP: ");
   Serial.println(ap_ip);
-  Serial.print("Canal WiFi: ");
-  Serial.println(WiFi.channel());
-  Serial.print("Número de estações conectadas: ");
-  Serial.println(WiFi.softAPgetStationNum());
   
-  // Configurar DNS
+  // Configurar servidor DNS
   dnsServer.start(53, "*", ap_ip);
-  Serial.println("Servidor DNS iniciado");
   
-  // Configurar servidor web
-  server.on("/", HTTP_GET, handleRoot);
+  // Configurar rotas do servidor web
+  server.on("/", handleRoot);
   server.on("/config", HTTP_POST, handleConfig);
   
   server.begin();
   Serial.println("Servidor web iniciado");
-  Serial.println("=== AP CONFIGURADO E PRONTO ===\n");
+  
+  // LED piscando lentamente no modo AP
+  static unsigned long lastLedChange = 0;
+  if (millis() - lastLedChange > 1000) {
+    lastLedChange = millis();
+    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+  }
 }
 
 void setup_wifi() {
@@ -347,56 +354,28 @@ void setup_wifi() {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.println("\n=== MENSAGEM MQTT RECEBIDA ===");
-  Serial.print("Tópico: ");
-  Serial.println(topic);
-  Serial.print("Mensagem: ");
-
-  String message = "";
-  for (int i = 0; i < length; i++) {
-    message += (char)payload[i];
-  }
+  Serial.print("Mensagem recebida [");
+  Serial.print(topic);
+  Serial.print("] ");
+  
+  char message[length + 1];
+  memcpy(message, payload, length);
+  message[length] = '\0';
+  
   Serial.println(message);
   
-  if(message == "ON") {
-    if (!relesAtivos) {
-      Serial.println("Comando: LIGAR relés (DESCER)");
-      digitalWrite(rl1, HIGH);
-      digitalWrite(rl2, HIGH);
-      digitalWrite(led, HIGH);
-      relesAtivos = true;
-      Serial.println("Relés LIGADOS - Elevador DESCENDO");
-    } else {
-      Serial.println("Relés já estão LIGADOS - Elevador já está DESCENDO");
-    }
-  } else if(message == "OFF") {
-    if (relesAtivos) {
-      Serial.println("Comando: DESLIGAR relés (SUBIR)");
-      digitalWrite(rl1, LOW);
-      digitalWrite(rl2, LOW);
-      digitalWrite(led, LOW);
-      relesAtivos = false;
-      Serial.println("Relés DESLIGADOS - Elevador SUBINDO");
-    } else {
-      Serial.println("Relés já estão DESLIGADOS - Elevador já está SUBINDO");
-    }
-  }
+  // Processar o comando
+  processarComando(message);
 }
 
 void reconnect() {
-  Serial.println("\n=== TENTANDO RECONECTAR AO MQTT ===");
   while (!client.connected()) {
-    Serial.print("Tentando conexão MQTT...");
-    String clientId = "ESP32Client-";
-    clientId += String(random(0xffff), HEX);
-
-    if (client.connect(clientId.c_str())) {
-      Serial.println("Conectado ao MQTT!");
+    Serial.print("Tentando reconectar ao MQTT...");
+    if (client.connect("ESP32Client")) {
+      Serial.println("conectado");
       client.subscribe(mqtt_topic);
-      Serial.print("Inscrito no tópico: ");
-      Serial.println(mqtt_topic);
     } else {
-      Serial.print("Falha na conexão MQTT, rc=");
+      Serial.print("falha, rc=");
       Serial.print(client.state());
       Serial.println(" tentando novamente em 5 segundos");
       delay(5000);
@@ -404,6 +383,19 @@ void reconnect() {
   }
 }
 
+void processarComando(const char* comando) {
+  if (strcmp(comando, "ON") == 0) {
+    digitalWrite(rl1, HIGH);
+    digitalWrite(rl2, HIGH);
+    relesAtivos = true;
+    Serial.println("Relés LIGADOS");
+  } else if (strcmp(comando, "OFF") == 0) {
+    digitalWrite(rl1, LOW);
+    digitalWrite(rl2, LOW);
+    relesAtivos = false;
+    Serial.println("Relés DESLIGADOS");
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -411,58 +403,41 @@ void setup() {
   
   Serial.println("\n=== INICIANDO ESP32 ===");
   
-  // Configurar pino do LED primeiro
+  // Configurar pinos
+  pinMode(rl1, OUTPUT);
+  pinMode(rl2, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  
+  // Inicializar relés e LED
+  digitalWrite(rl1, LOW);
+  digitalWrite(rl2, LOW);
   digitalWrite(LED_PIN, LOW);
   
-  
+  // Testar LED
+  testarLED();
   
   EEPROM.begin(512);
   carregarConfig();
   
-  pinMode(rl1, OUTPUT);
-  pinMode(rl2, OUTPUT);
-  pinMode(led, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-  
-  // Iniciar com relés desligados (elevador subindo)
-  digitalWrite(rl1, LOW);
-  digitalWrite(rl2, LOW);
-  digitalWrite(led, LOW);
-  relesAtivos = false;
-  
   setup_wifi();
   
   Serial.println("ESP32 iniciado e aguardando conexões...");
-  Serial.println("Mantenha o botão BOOT pressionado por 5 segundos para reativar o modo AP");
-  Serial.println("Estado inicial: Relés DESLIGADOS - Elevador SUBINDO");
 }
 
 void loop() {
   // Verificar botão de reset
-  if (digitalRead(BUTTON_PIN) == LOW) { // Botão pressionado
-    if (lastButtonPress == 0) {
-      lastButtonPress = millis();
-      Serial.println("Botão pressionado. Mantenha pressionado por 5 segundos para reset...");
-    } else if (millis() - lastButtonPress >= RESET_DELAY) {
-      Serial.println("\n=== RESET SOLICITADO ===");
-      Serial.println("Reativando modo AP...");
-      
-      // Limpar configurações
+  if (digitalRead(BUTTON_PIN) == LOW) {
+    if (millis() - lastButtonPress > RESET_DELAY) {
+      Serial.println("Reset de fábrica iniciado...");
       config.configurado = false;
       salvarConfig();
-      
-      // Desconectar WiFi
-      WiFi.disconnect(true);
-      delay(1000);
-      
-      // Reiniciar ESP32
       ESP.restart();
     }
   } else {
-    lastButtonPress = 0;
+    lastButtonPress = millis();
   }
-
+  
   if (modoAP) {
     dnsServer.processNextRequest();
     server.handleClient();
@@ -490,4 +465,4 @@ void loop() {
       }
     }
   }
-}
+} 
